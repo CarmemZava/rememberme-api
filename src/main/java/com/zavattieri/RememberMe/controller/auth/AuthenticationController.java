@@ -1,6 +1,7 @@
 package com.zavattieri.RememberMe.controller.auth;
 
 import com.zavattieri.RememberMe.domain.user.User;
+import com.zavattieri.RememberMe.domain.user.UserRole;
 import com.zavattieri.RememberMe.dto.auth.LoginResponseDTO;
 import com.zavattieri.RememberMe.dto.auth.LoginRequestDTO;
 import com.zavattieri.RememberMe.dto.auth.RegisterRequestDTO;
@@ -54,10 +55,11 @@ public class AuthenticationController {
         }
         String encryptedPassword = new BCryptPasswordEncoder().encode(data.password()); //encrypt the password using BCrypt hashing algorithm
 
-        User newUser = new User(data.name(), data.email(), encryptedPassword, data.role());  //create a new User object with the provided name, email, encrypted password, and role from the RegisterRequestDTO
+        User newUser = new User(data.name(), data.email(), encryptedPassword, UserRole.USER);  //create a new User object with the provided name, email, encrypted password, and role from the RegisterRequestDTO
+                                                                                                //All users are being saved as "USER" for now
         this.userRepository.save(newUser); //save the new user to the database using UserRepository method save
 
-        var response = new RegisterResponseDTO("User registered sucessfuly", newUser.getEmail());
+        var response = new RegisterResponseDTO("User registered successfully", newUser.getEmail());
 
         return ResponseEntity.ok(response); //return HTTP 200 OK response indicating successful registration
     }
