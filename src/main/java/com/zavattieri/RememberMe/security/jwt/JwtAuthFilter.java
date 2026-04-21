@@ -22,6 +22,14 @@ public class JwtAuthFilter extends OncePerRequestFilter { //extends OncePerReque
     @Autowired
     UserRepository userRepository;
 
+    @Override //This method is used to determine whether the filter should be applied to a given request, in this case, it checks if the request URI starts with "/auth", if it does, the filter will not be applied, allowing unauthenticated access to authentication endpoints
+              //SecurityConfiguration class already allows unauthenticated access to /auth/** endpoints, but the JwtAuthFilter will be executed before the authorization rules applied, so its necessary to repeat the permission of the endpoint "auth"
+              //Before this method I was always getting 403 forbidden error.
+    protected boolean shouldNotFilter(HttpServletRequest request){
+        String path = request.getRequestURI();
+        return path.startsWith("/auth");
+    }
+
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException { //implement custom filtering logic for JWT authentication
         try {
