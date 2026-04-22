@@ -1,20 +1,54 @@
 package com.zavattieri.RememberMe.service.auth;
 
+import com.zavattieri.RememberMe.domain.user.User;
+import com.zavattieri.RememberMe.domain.user.UserRole;
+import com.zavattieri.RememberMe.dto.auth.LoginRequestDTO;
+import com.zavattieri.RememberMe.dto.auth.LoginResponseDTO;
+import com.zavattieri.RememberMe.dto.auth.RegisterRequestDTO;
+import com.zavattieri.RememberMe.dto.auth.RegisterResponseDTO;
+import com.zavattieri.RememberMe.exception.DuplicateEmailException;
 import com.zavattieri.RememberMe.repository.user.UserRepository;
+import com.zavattieri.RememberMe.security.jwt.TokenService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
 @Service
-public class AuthenticationService implements UserDetailsService {  //implements UserDetailsService so Spring Security will use this class to handle authentication processes
+public class AuthenticationService {  //implements UserDetailsService so Spring Security will use this class to handle authentication processes
 
     @Autowired //decorator to inject the UserRepository dependency
     UserRepository userRepository;
+    @Autowired
+    private AuthenticationManager authenticationManager;
+    @Autowired
+    TokenService tokenService;
 
-    @Override
-    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException { //method that loads user details by username (email in this case, defined in the User class, method getUsername)
-        return userRepository.findByEmail(username); //UserRepository method to find user by email, returns a UserDetails object
+
+    public LoginResponseDTO login(LoginRequestDTO data){
+        var usernamePassword = new UsernamePasswordAuthenticationToken(data.email(), data.password()); //UsernamePasswordAuthenticationToken is a class provided by Spring Security that represents an authentication request using the username and password that comes from the DTO data
+        var auth = this.authenticationManager.authenticate(usernamePassword); //authenticationManager is a Spring Security component responsible for processing authentication requests, it takes the usernamePassword token and verifies the credentials against the user details service and other configured authentication providers
+
+        User user = (User) auth.getPrincipal(); //getPrincipal() method retrieves the authenticated user details from the Authentication object returned by the authenticationManager
+        //we cast it to our User class to access user-specific information
+
+        var token = tokenService.generateToken(user);
+
+        return new LoginResponseDTO(token, user.getName(), user.getEmail(), user.getRole().name()); //create a new AuthResponseDTO object containing the generated JWT token and user details (name, email
+    }
+
+    public RegisterResponseDTO register(RegisterRequestDTO data){
+        if(this.userRepository.findByEmail(data.email()) != null){  //search for existing user with the same email using UserRepository method findByEmail
+            throw new DuplicateEmailException("Email already exists");             //if user already exists, throw a custom exception DuplicateEmailException with a message indicating that the email is already in use, this exception will be handled by the GlobalExceptionHandler to return an appropriate error response to the client
+        }
+        String encryptedPassword = new BCryptPasswordEncoder().encode(data.password()); //encrypt the password using BCrypt hashing algorithm
+
+        User newUser = new User(data.name(), data.email(), encryptedPassword, UserRole.USER);  //create a new User object with the provided name, email, encrypted password, and role from the RegisterRequestDTO
+        //All users are being saved as "USER" for now
+        this.userRepository.save(newUser); //save the new user to the database using UserRepository method save
+
+        return new RegisterResponseDTO("User registered successfully", newUser.getEmail());
+
     }
 }

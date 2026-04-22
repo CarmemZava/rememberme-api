@@ -6,7 +6,7 @@ import jakarta.validation.constraints.Size;
 
 public record RegisterRequestDTO(
         //only attribute not included is role because by default every registered user is USER, not ADMIN
-        @NotBlank String name,
+        @NotBlank @Size(min = 2, message = "Name must have at least 2 characters") String name,
         @NotBlank @Email String email,
         @NotBlank @Size(min = 6, message = "Password must have at least 6 characters") String password
         //@NotNull UserRole role -> Keeping without Role for now, nothing defined yet Admin user
